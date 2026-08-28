@@ -70,7 +70,7 @@ public class X509CertificateCache {
      * @param value O certificado X509 a ser computado.
      * @return A chave única composta pelo DN e número de série do certificado.
      */
-    private static String uniquekey(final X509Certificate certificate) {
+    public static String uniquekey(final X509Certificate certificate) {
         return
             certificate.getSubjectDN().getName() + 
             certificate.getSerialNumber().toString();

@@ -37,19 +37,36 @@
 
 package org.demoiselle.signer.core.ca.manager;
 
+import static org.demoiselle.signer.core.ca.manager.reversetree.X509CertificateCache.uniquekey;
 import java.security.cert.X509Certificate;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
+import org.demoiselle.signer.core.ca.manager.reversetree.X509CertificateCache;
 
+/**
+ * Classe responsável por gerenciar o cache de certificados X.509.
+ * Implementa o padrão Singleton para garantir que apenas uma instância
+ * do cache seja criada durante a execução da aplicação.
+ * @author Oto Soares Coelho Junior (otojunior@gmail.com)
+ * @since 28/08/2026
+ */
 public class CAManagerCache {
 	private static CAManagerCache instance;
-	private Map<String, Collection<X509Certificate>> cachedCertificates = new HashMap<>();
-	private Map<String, Boolean> isCAofCertificate = new HashMap<>();
+	private X509CertificateCache cache = new X509CertificateCache();
+	private Map<String, Boolean> cacheCaCert = new HashMap<>();
 
-	private CAManagerCache() {
-	}
+	/**
+	 * Constructor privado para evitar a criação de instâncias externas.
+     */
+	private CAManagerCache() { }
 
+	/**
+     * Retorna a instância única do CAManagerCache.
+     * Se a instância ainda não foi criada, ela será inicializada.
+     * @return A instância única do CAManagerCache.
+     */
 	public static CAManagerCache getInstance() {
 		if (instance == null) {
 			instance = new CAManagerCache();
@@ -57,30 +74,67 @@ public class CAManagerCache {
 		return instance;
 	}
 
-	Collection<X509Certificate> getCachedCertificatesFor(X509Certificate certificate) {
-		return cachedCertificates.get(getCertificateIdentificator(certificate));
+    /**
+     * Retorna a coleção de certificados em cache para o certificado fornecido.
+     * @param certificate O certificado X.509 para o qual os
+     * certificados em cache serão recuperados.
+     * @return A coleção de certificados em cache associados ao certificado fornecido.
+     */
+	Collection<X509Certificate> getCachedCertificatesFor(final X509Certificate certificate) {
+        return cache
+            .get(certificate)
+            .pathToRoot();
+    }
+
+	/**
+     * Adiciona um certificado e sua cadeia de certificados em cache.
+     * @param certificate O certificado X.509 a ser adicionado ao cache.
+     * @param certificates A coleção de certificadosque representam a cadeia de certificados.
+     */
+	synchronized void addCertificate(
+	        final X509Certificate certificate,
+	        final Collection<X509Certificate> certificates) {
+	    Iterator<X509Certificate> iterator = certificates.iterator();
+	    if (iterator.hasNext()) {
+	        X509Certificate atual = iterator.next();
+	        while (iterator.hasNext()) {
+	            X509Certificate proximo = iterator.next();
+	            cache.add(atual, proximo);
+	            atual = proximo;
+	        }
+	    }
 	}
 
-	synchronized void addCertificate(X509Certificate certificate, Collection<X509Certificate> certificates) {
-		cachedCertificates.put(getCertificateIdentificator(certificate), certificates);
-	}
-
+	/**
+     * Verifica se um certificado é uma Autoridade Certificadora (CA) para outro certificado.
+     * @param ca O certificado que será verificado como CA.
+     * @param certificate O certificado para o qual a relação de CA será verificada.
+     * @return <code>true</code> se o certificado for uma CA para o outro certificado,
+     * <code>false</code> caso contrário, ou <code>null</code> se a relação não estiver em cache.
+     */
 	Boolean getIsCAofCertificate(X509Certificate ca, X509Certificate certificate) {
-		String key = getCertificateIdentificator(ca) + "|" + getCertificateIdentificator(certificate);
-		return isCAofCertificate.containsKey(key) ? isCAofCertificate.get(key) : null;
+	    String key = uniquekey(ca) + "|" + uniquekey(certificate);
+		return cacheCaCert.containsKey(key) ? cacheCaCert.get(key) : null;
 	}
 
-	synchronized void setIsCAofCertificate(X509Certificate ca, X509Certificate certificate, boolean value) {
-		String key = getCertificateIdentificator(ca) + "|" + getCertificateIdentificator(certificate);
-		isCAofCertificate.put(key, value);
+	/**
+     * Define se um certificado é uma Autoridade Certificadora (CA) para outro certificado.
+     * @param ca O certificado que será definido como CA.
+     * @param certificate O certificado para o qual a relação de CA será estabelecida.
+     * @param value Valor booleano indicando se o certificado é uma CA (true) ou não (false).
+     */
+	synchronized void setIsCAofCertificate(
+	        final X509Certificate ca,
+	        final X509Certificate certificate,
+	        boolean value) {
+	    String key = uniquekey(ca) + "|" + uniquekey(certificate);
+		cacheCaCert.put(key, value);
 	}
 
+	/**
+     * Invalida o cache, removendo todos os certificados armazenados.
+     */
 	public synchronized void invalidate() {
-		cachedCertificates.clear();
-		isCAofCertificate.clear();
-	}
-
-	private String getCertificateIdentificator(X509Certificate certificate) {
-		return certificate.getSubjectDN().getName() + certificate.getSerialNumber().toString();
+        cache.clear();
 	}
 }
