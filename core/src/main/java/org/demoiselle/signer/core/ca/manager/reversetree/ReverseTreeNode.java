@@ -3,8 +3,6 @@
  */
 package org.demoiselle.signer.core.ca.manager.reversetree;
 
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -67,6 +65,6 @@ public class ReverseTreeNode<T> {
                 current = current.parent) {
             result.add(current.value);
         }
-        return Collections.unmodifiableList(result);
+        return result;
     }
 }
