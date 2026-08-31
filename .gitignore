@@ -7,6 +7,8 @@ target/
 /pom.xml.releaseBackup
 .idea
 *.iml
+*.factorypath
+mise.toml
 
 chain-icp-brasil-homolog/novascadeias/*
 chain-icp-brasil-homolog/novosp7bs/*
