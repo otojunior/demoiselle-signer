@@ -43,6 +43,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
+import org.demoiselle.signer.core.ca.manager.reversetree.ReverseTreeNode;
 import org.demoiselle.signer.core.ca.manager.reversetree.X509CertificateCache;
 
 /**
@@ -81,9 +82,10 @@ public class CAManagerCache {
      * @return A coleção de certificados em cache associados ao certificado fornecido.
      */
 	Collection<X509Certificate> getCachedCertificatesFor(final X509Certificate certificate) {
-        return cache
-            .get(certificate)
-            .pathToRoot();
+        ReverseTreeNode<X509Certificate> node = cache.get(certificate);
+        return node != null
+            ? node.pathToRoot()
+            : null;
     }
 
 	/**
@@ -94,11 +96,11 @@ public class CAManagerCache {
 	synchronized void addCertificate(
 	        final X509Certificate certificate,
 	        final Collection<X509Certificate> certificates) {
-	    Iterator<X509Certificate> iterator = certificates.iterator();
-	    if (iterator.hasNext()) {
-	        X509Certificate atual = iterator.next();
-	        while (iterator.hasNext()) {
-	            X509Certificate proximo = iterator.next();
+	    Iterator<X509Certificate> it = certificates.iterator();
+	    if (it.hasNext()) {
+	        X509Certificate atual = it.next();
+	        while (it.hasNext()) {
+	            X509Certificate proximo = it.next();
 	            cache.add(atual, proximo);
 	            atual = proximo;
 	        }
@@ -112,10 +114,12 @@ public class CAManagerCache {
      * @return <code>true</code> se o certificado for uma CA para o outro certificado,
      * <code>false</code> caso contrário, ou <code>null</code> se a relação não estiver em cache.
      */
-	Boolean getIsCAofCertificate(X509Certificate ca, X509Certificate certificate) {
-	    String key = uniquekey(ca) + "|" + uniquekey(certificate);
-		return cacheCaCert.containsKey(key) ? cacheCaCert.get(key) : null;
-	}
+    Boolean getIsCAofCertificate(X509Certificate ca, X509Certificate certificate) {
+        String key = uniquekey(ca) + "|" + uniquekey(certificate);
+        return cacheCaCert.containsKey(key)
+            ? cacheCaCert.get(key)
+            : null;
+    }
 
 	/**
      * Define se um certificado é uma Autoridade Certificadora (CA) para outro certificado.
@@ -136,5 +140,6 @@ public class CAManagerCache {
      */
 	public synchronized void invalidate() {
         cache.clear();
+        cacheCaCert.clear();
 	}
 }

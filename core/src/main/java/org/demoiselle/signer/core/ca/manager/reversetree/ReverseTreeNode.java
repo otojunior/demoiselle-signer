@@ -5,6 +5,7 @@ package org.demoiselle.signer.core.ca.manager.reversetree;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedList;
 import java.util.List;
 
 /**
@@ -60,7 +61,7 @@ public class ReverseTreeNode<T> {
      * @return Uma lista imutável contendo os valores dos nós desde o nó atual até a raiz.
      */
     public List<T> pathToRoot() {
-        List<T> result = new ArrayList<T>();
+        List<T> result = new LinkedList<T>();
         for (ReverseTreeNode<T> current = this;
                 current != null;
                 current = current.parent) {
