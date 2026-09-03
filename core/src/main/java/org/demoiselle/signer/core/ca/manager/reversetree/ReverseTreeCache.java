@@ -17,14 +17,10 @@ public final class ReverseTreeCache<K, T> {
      * @param parentKey A chave do nó pai (pode ser <code>null</code> se não houver pai).
      * @return O nó associado à chave fornecida.
      */
-    public ReverseTreeNode<T> add(K key, T value, K parentKey) {
+    public ReverseTreeNode<T> add(K key, T value, ReverseTreeNode<T> parent) {
         Objects.requireNonNull(key);
         Objects.requireNonNull(value);
-        return cache.computeIfAbsent(key, unused -> {
-            return new ReverseTreeNode<T>(value, parentKey != null
-                ? cache.get(parentKey)
-                : null);
-        });
+        return cache.computeIfAbsent(key, unused -> new ReverseTreeNode<>(value, parent));
     }
 
     /**

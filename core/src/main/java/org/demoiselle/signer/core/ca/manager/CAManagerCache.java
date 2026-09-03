@@ -41,8 +41,9 @@ import static org.demoiselle.signer.core.ca.manager.reversetree.X509CertificateC
 import java.security.cert.X509Certificate;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import org.demoiselle.signer.core.ca.manager.reversetree.ReverseTreeNode;
 import org.demoiselle.signer.core.ca.manager.reversetree.X509CertificateCache;
 import org.slf4j.Logger;
@@ -57,26 +58,26 @@ import org.slf4j.LoggerFactory;
  */
 public class CAManagerCache {
     private static final Logger LOGGER = LoggerFactory.getLogger(CAManagerCache.class);
-	private static CAManagerCache instance;
-	private X509CertificateCache cache = new X509CertificateCache();
-	private Map<String, Boolean> cacheCaCert = new HashMap<>();
+    private static CAManagerCache instance;
+    private X509CertificateCache cache = new X509CertificateCache();
+    private Map<String, Boolean> cacheCaCert = new HashMap<>();
 
-	/**
-	 * Constructor privado para evitar a criação de instâncias externas.
+    /**
+     * Constructor privado para evitar a criação de instâncias externas.
      */
-	private CAManagerCache() { }
+    private CAManagerCache() { }
 
-	/**
+    /**
      * Retorna a instância única do CAManagerCache.
      * Se a instância ainda não foi criada, ela será inicializada.
      * @return A instância única do CAManagerCache.
      */
-	public static CAManagerCache getInstance() {
-		if (instance == null) {
-			instance = new CAManagerCache();
-		}
-		return instance;
-	}
+    public static CAManagerCache getInstance() {
+        if (instance == null) {
+            instance = new CAManagerCache();
+        }
+        return instance;
+    }
 
     /**
      * Retorna a coleção de certificados em cache para o certificado fornecido.
@@ -84,7 +85,7 @@ public class CAManagerCache {
      * certificados em cache serão recuperados.
      * @return A coleção de certificados em cache associados ao certificado fornecido.
      */
-	Collection<X509Certificate> getCachedCertificatesFor(final X509Certificate certificate) {
+    Collection<X509Certificate> getCachedCertificatesFor(final X509Certificate certificate) {
         ReverseTreeNode<X509Certificate> node = cache.get(certificate);
         logTraceGet(certificate, node);
         return node != null
@@ -92,27 +93,22 @@ public class CAManagerCache {
             : null;
     }
 
-	/**
+    /**
      * Adiciona um certificado e sua cadeia de certificados em cache.
      * @param certificate O certificado X.509 a ser adicionado ao cache.
      * @param certificates A coleção de certificadosque representam a cadeia de certificados.
      */
-	synchronized void addCertificate(
-	        final X509Certificate certificate,
-	        final Collection<X509Certificate> certificates) {
-	    Iterator<X509Certificate> it = certificates.iterator();
-	    if (it.hasNext()) {
-	        X509Certificate atual = it.next();
-	        while (it.hasNext()) {
-	            X509Certificate proximo = it.next();
-	            cache.add(atual, proximo);
-	            logTraceAdd(atual, proximo);
-	            atual = proximo;
-	        }
-	    }
-	}
+    synchronized void addCertificate(
+            final X509Certificate certificate,
+            final Collection<X509Certificate> certificates) {
+        List<X509Certificate> certs = certificates
+            .stream()
+            .collect(Collectors.toList());
+        logTraceAdd(certs);
+        cache.add(certs);
+    }
 
-	/**
+    /**
      * Verifica se um certificado é uma Autoridade Certificadora (CA) para outro certificado.
      * @param ca O certificado que será verificado como CA.
      * @param certificate O certificado para o qual a relação de CA será verificada.
@@ -129,64 +125,69 @@ public class CAManagerCache {
             : null;
     }
 
-	/**
+    /**
      * Define se um certificado é uma Autoridade Certificadora (CA) para outro certificado.
      * @param ca O certificado que será definido como CA.
      * @param certificate O certificado para o qual a relação de CA será estabelecida.
      * @param value Valor booleano indicando se o certificado é uma CA (true) ou não (false).
      */
-	synchronized void setIsCAofCertificate(
-	        final X509Certificate ca,
-	        final X509Certificate certificate,
-	        boolean value) {
-	    String key = uniquekey(ca) + "|" + uniquekey(certificate);
-		cacheCaCert.put(key, value);
-		logTraceSetIsCAofCertificate(ca, certificate, value);
-	}
+    synchronized void setIsCAofCertificate(
+            final X509Certificate ca,
+            final X509Certificate certificate,
+            boolean value) {
+        String key = uniquekey(ca) + "|" + uniquekey(certificate);
+        cacheCaCert.put(key, value);
+        logTraceSetIsCAofCertificate(ca, certificate, value);
+    }
 
-	/**
+    /**
      * Invalida o cache, removendo todos os certificados armazenados.
      */
-	public synchronized void invalidate() {
+    public synchronized void invalidate() {
         cache.clear();
         cacheCaCert.clear();
-	}
-	
-	/**
+    }
+
+    /**
      * Método auxiliar para registrar informações de rastreamento (trace)
      * sobre o certificado e seu caminho no cache.
      * @param certificate O certificado X.509 que está sendo verificado no cache.
      * @param node O nó da árvore reversa correspondente ao certificado no cache.
      */
-	private void logTraceGet(
+    private void logTraceGet(
             final X509Certificate certificate,
             ReverseTreeNode<X509Certificate> node) {
         if (LOGGER.isTraceEnabled()) {
             if (node != null) {
                 LOGGER.trace("(Get) CN={}", cn(certificate));
-                node.pathToRoot()
-                    .forEach(c -> LOGGER.trace("(Get) Elemento CN={}", cn(c)));
+                for (X509Certificate c : node.pathToRoot()) {
+                    LOGGER.trace("(Get) Elemento CN={}", cn(c));
+                }
             } else {
                 LOGGER.trace("(Get) !VAZIO! CN={}", cn(certificate));
             }
         }
     }
 
-	/**
+    /**
      * Método auxiliar para registrar informações de rastreamento (trace)
      * sobre a adição de um certificado ao cache.
      * @param atual O certificado X.509 atual que está sendo adicionado ao cache.
      * @param proximo O próximo certificado X.509 na cadeia que está sendo adicionado ao cache.
      */
-	private void logTraceAdd(X509Certificate atual, X509Certificate proximo) {
+    private void logTraceAdd(List<X509Certificate> certificates) {
         if (LOGGER.isTraceEnabled()) {
-            LOGGER.trace("(Add) CN={} -> CN={}",
-                cn(atual),
-                cn(proximo));
+            for (int i = 0; i < certificates.size() - 1; i++) {
+                X509Certificate atual = certificates.get(i);
+                X509Certificate proximo = certificates.get(i + 1);
+                LOGGER.trace("(Add) CN={} -> CN={}",
+                    cn(atual),
+                    cn(proximo));
+            }
         }
     }
 
-	/**
+    /**
      * Método auxiliar para registrar informações de rastreamento (trace)
      * sobre a verificação se um certificado é uma Autoridade Certificadora (CA)
      * para outro certificado.
@@ -194,7 +195,7 @@ public class CAManagerCache {
      * @param certificate O certificado X.509 para o qual a relação de CA está sendo verificada.
      * @param key A chave única que representa a relação entre os dois certificados no cache.
      */
-	private void logTraceGetIsCAofCert(
+    private void logTraceGetIsCAofCert(
             final X509Certificate ca,
             final X509Certificate certificate,
             String key) {
@@ -208,7 +209,7 @@ public class CAManagerCache {
         }
     }
 
-	/**
+    /**
      * Método auxiliar para registrar informações de rastreamento (trace)
      * sobre a definição de um certificado como Autoridade Certificadora (CA)
      * para outro certificado.
@@ -216,7 +217,7 @@ public class CAManagerCache {
      * @param certificate O certificado X.509 para o qual a relação de CA está sendo estabelecida.
      * @param value Valor booleano indicando se o certificado é uma CA (true) ou não (false).
      */
-	private void logTraceSetIsCAofCertificate(
+    private void logTraceSetIsCAofCertificate(
             final X509Certificate ca,
             final X509Certificate certificate,
             boolean value) {
@@ -228,12 +229,12 @@ public class CAManagerCache {
         }
     }
 
-	/**
+    /**
      * Método auxiliar para extrair o Common Name (CN) de um certificado X.509.
      * @param certificate O certificado X.509 do qual o CN será extraído.
      * @return O Common Name (CN) do certificado.
      */
-	private String cn(final X509Certificate certificate) {
+    private String cn(final X509Certificate certificate) {
         return certificate
             .getSubjectX500Principal()
             .getName()

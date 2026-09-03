@@ -4,10 +4,12 @@
 package org.demoiselle.signer.core.ca.manager.reversetree;
 
 import java.security.cert.X509Certificate;
+import java.util.List;
+import java.util.ListIterator;
 
 /**
- * Cache de certificados X509, implementado usando uma árvore reversa para armazenar
- * os certificados e suas relações de hierarquia.
+ * Cache de certificados X509, implementado usando uma árvore reversa para armazenar os certificados
+ * e suas relações de hierarquia.
  * @author Oto Soares Coelho Junior (otojunior@gmail.com)
  * @since 28/08/2026
  */
@@ -15,19 +17,20 @@ public class X509CertificateCache {
     private ReverseTreeCache<String, X509Certificate> cache = new ReverseTreeCache<>();
 
     /**
-     * Adiciona um certificado X509 ao cache, associando-o ao seu DN e número de série.
-     * Se o certificado já estiver presente no cache, o nó existente será retornado.
+     * Adiciona um certificado X509 ao cache, associando-o ao seu DN e número de série. Se o certificado
+     * já estiver presente no cache, o nó existente será retornado.
      * @param value O certificado X509 a ser adicionado.
      * @param parent O certificado pai (pode ser <code>null</code> se não houver pai).
      * @return O nó associado ao certificado fornecido.
      */
-    public ReverseTreeNode<X509Certificate> add(
-            final X509Certificate value,
-            final X509Certificate parent) {
-        return cache.add(
-            uniquekey(value),
-            value,
-            parent != null ? uniquekey(parent) : null);
+    public ReverseTreeNode<X509Certificate> add(List<X509Certificate> path) {
+        ListIterator<X509Certificate> it = path.listIterator(path.size());
+        ReverseTreeNode<X509Certificate> issuer = null;
+        while (it.hasPrevious()) {
+            X509Certificate cert = it.previous();
+            issuer = cache.add(uniquekey(cert), cert, issuer);
+        }
+        return issuer;
     }
 
     /**
@@ -42,8 +45,8 @@ public class X509CertificateCache {
     /**
      * Verifica se o cache contém um nó associado ao certificado X509 fornecido.
      * @param value O certificado X509 a ser verificado.
-     * @return <code>true</code> se o cache contiver um nó associado ao certificado,
-     * <code>false</code> caso contrário.
+     * @return <code>true</code> se o cache contiver um nó associado ao certificado, <code>false</code>
+     *         caso contrário.
      */
     public boolean contains(X509Certificate value) {
         return cache.contains(uniquekey(value));
@@ -63,16 +66,15 @@ public class X509CertificateCache {
     public void clear() {
         cache.clear();
     }
-    
+
     /**
-     * Calcula uma chave única para o certificado X509,
-     * combinando seu DN e número de série.
+     * Calcula uma chave única para o certificado X509, combinando seu DN e número de série.
      * @param value O certificado X509 a ser computado.
      * @return A chave única composta pelo DN e número de série do certificado.
      */
     public static String uniquekey(final X509Certificate certificate) {
         return
-            certificate.getSubjectDN().getName() + 
+            certificate.getSubjectDN().getName() +
             certificate.getSerialNumber().toString();
     }
 }
