@@ -5,6 +5,8 @@ package org.demoiselle.signer.core.ca.manager.reversetree;
 
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * 
@@ -16,8 +18,11 @@ import java.util.List;
  * @param <T> O tipo do valor armazenado no nó.
  */
 public class ReverseTreeNode<T> {
-    private T value;
-    private ReverseTreeNode<T> parent;
+    private final T value;
+    private volatile ReverseTreeNode<T> parent;
+    private final Set<ReverseTreeNode<T>> rejectedParents = ConcurrentHashMap.newKeySet();
+    private volatile Boolean selfSigned;
+    private volatile boolean complete;
     
     /**
      * Construtor da classe ReverseTreeNode.
@@ -64,5 +69,61 @@ public class ReverseTreeNode<T> {
      */
     public ReverseTreeNode<T> getParent() {
         return parent;
+    }
+
+    /**
+     * Retorna a relação conhecida entre este nó e um possível emissor.
+     * @param issuer O nó do possível emissor.
+     * @return <code>true</code> se for o emissor, <code>false</code> se a relação
+     * foi rejeitada e <code>null</code> se ainda não foi avaliada.
+     */
+    public Boolean isIssuedBy(final ReverseTreeNode<T> issuer) {
+        if (issuer == this) {
+            return selfSigned;
+        }
+
+        ReverseTreeNode<T> currentParent = parent;
+        if (currentParent != null) {
+            return currentParent == issuer;
+        }
+
+        if (rejectedParents.contains(issuer) || complete) {
+            return false;
+        }
+
+        return null;
+    }
+
+    /**
+     * Registra o resultado da validação de um possível emissor deste nó.
+     * @param issuer O nó do possível emissor.
+     * @param value Resultado da validação.
+     */
+    public synchronized void setIssuedBy(
+            final ReverseTreeNode<T> issuer,
+            final boolean value) {
+        if (issuer == this) {
+            selfSigned = value;
+        } else if (value) {
+            parent = issuer;
+            rejectedParents.remove(issuer);
+        } else if (parent != issuer) {
+            rejectedParents.add(issuer);
+        }
+    }
+
+    /**
+     * Marca que o caminho deste nó até a raiz está completo.
+     */
+    public void markComplete() {
+        complete = true;
+    }
+
+    /**
+     * Indica se o caminho deste nó até a raiz está completo.
+     * @return <code>true</code> se o caminho estiver completo.
+     */
+    public boolean isComplete() {
+        return complete;
     }
 }

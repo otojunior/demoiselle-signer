@@ -20,7 +20,13 @@ public final class ReverseTreeCache<K, T> {
     public ReverseTreeNode<T> add(K key, T value, ReverseTreeNode<T> parent) {
         Objects.requireNonNull(key);
         Objects.requireNonNull(value);
-        return cache.computeIfAbsent(key, unused -> new ReverseTreeNode<>(value, parent));
+        ReverseTreeNode<T> node = cache.computeIfAbsent(
+            key,
+            unused -> new ReverseTreeNode<>(value, parent));
+        if (parent != null) {
+            node.setIssuedBy(parent, true);
+        }
+        return node;
     }
 
     /**

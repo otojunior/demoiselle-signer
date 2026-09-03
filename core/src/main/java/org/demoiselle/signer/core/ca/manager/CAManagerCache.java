@@ -37,12 +37,9 @@
 
 package org.demoiselle.signer.core.ca.manager;
 
-import static org.demoiselle.signer.core.ca.manager.reversetree.X509CertificateCache.uniquekey;
 import java.security.cert.X509Certificate;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Collectors;
 import org.demoiselle.signer.core.ca.manager.reversetree.ReverseTreeNode;
 import org.demoiselle.signer.core.ca.manager.reversetree.X509CertificateCache;
@@ -58,9 +55,9 @@ import org.slf4j.LoggerFactory;
  */
 public class CAManagerCache {
     private static final Logger LOGGER = LoggerFactory.getLogger(CAManagerCache.class);
-    private static CAManagerCache instance;
-    private X509CertificateCache cache = new X509CertificateCache();
-    private Map<String, Boolean> cacheCaCert = new HashMap<>();
+    private static final CAManagerCache INSTANCE = new CAManagerCache();
+
+    private final X509CertificateCache cache = new X509CertificateCache();
 
     /**
      * Constructor privado para evitar a criação de instâncias externas.
@@ -73,10 +70,7 @@ public class CAManagerCache {
      * @return A instância única do CAManagerCache.
      */
     public static CAManagerCache getInstance() {
-        if (instance == null) {
-            instance = new CAManagerCache();
-        }
-        return instance;
+        return INSTANCE;
     }
 
     /**
@@ -118,11 +112,9 @@ public class CAManagerCache {
     Boolean getIsCAofCertificate(
             final X509Certificate ca,
             final X509Certificate certificate) {
-        String key = uniquekey(ca) + "|" + uniquekey(certificate);
-        logTraceGetIsCAofCert(ca, certificate, key);
-        return cacheCaCert.containsKey(key)
-            ? cacheCaCert.get(key)
-            : null;
+        Boolean result = cache.getIsCAofCertificate(ca, certificate);
+        logTraceGetIsCAofCert(ca, certificate, result);
+        return result;
     }
 
     /**
@@ -135,8 +127,7 @@ public class CAManagerCache {
             final X509Certificate ca,
             final X509Certificate certificate,
             boolean value) {
-        String key = uniquekey(ca) + "|" + uniquekey(certificate);
-        cacheCaCert.put(key, value);
+        cache.setIsCAofCertificate(ca, certificate, value);
         logTraceSetIsCAofCertificate(ca, certificate, value);
     }
 
@@ -145,7 +136,6 @@ public class CAManagerCache {
      */
     public synchronized void invalidate() {
         cache.clear();
-        cacheCaCert.clear();
     }
 
     /**
@@ -193,19 +183,17 @@ public class CAManagerCache {
      * para outro certificado.
      * @param ca O certificado X.509 que está sendo verificado como CA.
      * @param certificate O certificado X.509 para o qual a relação de CA está sendo verificada.
-     * @param key A chave única que representa a relação entre os dois certificados no cache.
+     * @param value A relação encontrada no cache.
      */
     private void logTraceGetIsCAofCert(
             final X509Certificate ca,
             final X509Certificate certificate,
-            String key) {
+            Boolean value) {
         if (LOGGER.isTraceEnabled()) {
             LOGGER.trace("(Is-CAofCert) {} | {}? {}",
                 cn(ca),
                 cn(certificate),
-                cacheCaCert.containsKey(key)
-                    ? cacheCaCert.get(key)
-                    : "!NULL!");
+                value != null ? value : "!NULL!");
         }
     }
 

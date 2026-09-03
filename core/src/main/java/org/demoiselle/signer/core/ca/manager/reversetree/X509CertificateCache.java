@@ -29,6 +29,7 @@ public class X509CertificateCache {
         while (it.hasPrevious()) {
             X509Certificate cert = it.previous();
             issuer = cache.add(uniquekey(cert), cert, issuer);
+            issuer.markComplete();
         }
         return issuer;
     }
@@ -39,7 +40,48 @@ public class X509CertificateCache {
      * @return O nó associado ao certificado, ou <code>null</code> se não houver nenhum nó associado.
      */
     public ReverseTreeNode<X509Certificate> get(final X509Certificate value) {
-        return cache.get(uniquekey(value));
+        ReverseTreeNode<X509Certificate> node = cache.get(uniquekey(value));
+        return node != null && node.isComplete()
+            ? node
+            : null;
+    }
+
+    /**
+     * Retorna a relação conhecida entre um certificado e seu possível emissor.
+     * @param ca O possível certificado emissor.
+     * @param certificate O certificado emitido.
+     * @return <code>true</code> ou <code>false</code> para uma relação conhecida,
+     * ou <code>null</code> se ela ainda não foi avaliada.
+     */
+    public Boolean getIsCAofCertificate(
+            final X509Certificate ca,
+            final X509Certificate certificate) {
+        ReverseTreeNode<X509Certificate> issuer = cache.get(uniquekey(ca));
+        ReverseTreeNode<X509Certificate> issued = cache.get(uniquekey(certificate));
+        return issuer != null && issued != null
+            ? issued.isIssuedBy(issuer)
+            : null;
+    }
+
+    /**
+     * Registra o resultado da validação entre um certificado e seu possível emissor.
+     * @param ca O possível certificado emissor.
+     * @param certificate O certificado emitido.
+     * @param value Resultado da validação.
+     */
+    public void setIsCAofCertificate(
+            final X509Certificate ca,
+            final X509Certificate certificate,
+            final boolean value) {
+        ReverseTreeNode<X509Certificate> issuer = cache.add(
+            uniquekey(ca),
+            ca,
+            null);
+        ReverseTreeNode<X509Certificate> issued = cache.add(
+            uniquekey(certificate),
+            certificate,
+            null);
+        issued.setIssuedBy(issuer, value);
     }
 
     /**
@@ -49,7 +91,7 @@ public class X509CertificateCache {
      *         caso contrário.
      */
     public boolean contains(X509Certificate value) {
-        return cache.contains(uniquekey(value));
+        return get(value) != null;
     }
 
     /**
