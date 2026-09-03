@@ -118,7 +118,8 @@ public class CAManagerCache {
     }
 
     /**
-     * Define se um certificado é uma Autoridade Certificadora (CA) para outro certificado.
+     * Registra se um certificado é uma Autoridade Certificadora (CA) para outro certificado.
+     * Apenas relações válidas são mantidas no cache.
      * @param ca O certificado que será definido como CA.
      * @param certificate O certificado para o qual a relação de CA será estabelecida.
      * @param value Valor booleano indicando se o certificado é uma CA (true) ou não (false).

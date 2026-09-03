@@ -46,7 +46,8 @@ public class X509CertificateCacheTest {
         assertNull(cache.getIsCAofCertificate(issuer, issued));
 
         cache.setIsCAofCertificate(rejectedIssuer, issued, false);
-        assertFalse(cache.getIsCAofCertificate(rejectedIssuer, issued));
+        assertNull(cache.getIsCAofCertificate(rejectedIssuer, issued));
+        assertEquals(0, cache.size());
         assertNull(cache.get(issued));
 
         cache.setIsCAofCertificate(issuer, issued, true);
@@ -59,7 +60,7 @@ public class X509CertificateCacheTest {
         assertEquals(Arrays.asList(issued, issuer, root), path);
         assertTrue(cache.getIsCAofCertificate(root, issuer));
         assertFalse(cache.getIsCAofCertificate(root, issued));
-        assertFalse(cache.getIsCAofCertificate(rejectedIssuer, issued));
+        assertNull(cache.getIsCAofCertificate(rejectedIssuer, issued));
     }
 
     @Test
@@ -70,10 +71,6 @@ public class X509CertificateCacheTest {
         cache.setIsCAofCertificate(root, root, true);
 
         assertTrue(cache.getIsCAofCertificate(root, root));
-        assertNull(cache.get(root));
-
-        cache.add(Collections.singletonList(root));
-
         assertTrue(cache.get(root).isRoot());
         assertEquals(Collections.singletonList(root), cache.get(root).pathToRoot());
     }

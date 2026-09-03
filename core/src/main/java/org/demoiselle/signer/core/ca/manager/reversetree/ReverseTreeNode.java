@@ -5,14 +5,11 @@ package org.demoiselle.signer.core.ca.manager.reversetree;
 
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * 
  * @author Oto Soares Coelho Junior (otojunior@gmail.com)
  * @since 02/07/2026
- * @see https://github.com/otojunior
  * Representa um nó em uma árvore reversa, onde cada nó possui
  * um valor e uma referência para o nó pai.
  * @param <T> O tipo do valor armazenado no nó.
@@ -20,8 +17,6 @@ import java.util.concurrent.ConcurrentHashMap;
 public class ReverseTreeNode<T> {
     private final T value;
     private volatile ReverseTreeNode<T> parent;
-    private final Set<ReverseTreeNode<T>> rejectedParents = ConcurrentHashMap.newKeySet();
-    private volatile Boolean selfSigned;
     private volatile boolean complete;
     
     /**
@@ -74,41 +69,26 @@ public class ReverseTreeNode<T> {
     /**
      * Retorna a relação conhecida entre este nó e um possível emissor.
      * @param issuer O nó do possível emissor.
-     * @return <code>true</code> se for o emissor, <code>false</code> se a relação
-     * foi rejeitada e <code>null</code> se ainda não foi avaliada.
+     * @return <code>true</code> se for o emissor, <code>false</code> se outro
+     * emissor for conhecido e <code>null</code> se a relação ainda for desconhecida.
      */
     public Boolean isIssuedBy(final ReverseTreeNode<T> issuer) {
-        if (issuer == this) {
-            return selfSigned;
-        }
-
         ReverseTreeNode<T> currentParent = parent;
         if (currentParent != null) {
             return currentParent == issuer;
         }
-
-        if (rejectedParents.contains(issuer) || complete) {
-            return false;
-        }
-
-        return null;
+        return complete
+            ? issuer == this
+            : null;
     }
 
     /**
-     * Registra o resultado da validação de um possível emissor deste nó.
-     * @param issuer O nó do possível emissor.
-     * @param value Resultado da validação.
+     * Define o emissor deste nó caso ele ainda não seja conhecido.
+     * @param issuer O nó emissor.
      */
-    public synchronized void setIssuedBy(
-            final ReverseTreeNode<T> issuer,
-            final boolean value) {
-        if (issuer == this) {
-            selfSigned = value;
-        } else if (value) {
+    public synchronized void setParent(final ReverseTreeNode<T> issuer) {
+        if (parent == null && issuer != this && !complete) {
             parent = issuer;
-            rejectedParents.remove(issuer);
-        } else if (parent != issuer) {
-            rejectedParents.add(issuer);
         }
     }
 

@@ -6,6 +6,14 @@ package org.demoiselle.signer.core.ca.manager.reversetree;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
+/**
+ * Cache implementado como uma árvore reversa,
+ * onde cada nó possui uma chave única, valor associado, e um pai (nó predecessor). 
+ * @author Oto Soares Coelho Junior (otojunior@gmail.com)
+ * @since 03/09/2026
+ * @param <K> Tipo da chave do elemento.
+ * @param <T> Tipo do elemento.
+ */
 public final class ReverseTreeCache<K, T> {
     private final ConcurrentHashMap<K, ReverseTreeNode<T>> cache = new ConcurrentHashMap<>();
 
@@ -20,11 +28,10 @@ public final class ReverseTreeCache<K, T> {
     public ReverseTreeNode<T> add(K key, T value, ReverseTreeNode<T> parent) {
         Objects.requireNonNull(key);
         Objects.requireNonNull(value);
-        ReverseTreeNode<T> node = cache.computeIfAbsent(
-            key,
-            unused -> new ReverseTreeNode<>(value, parent));
+        ReverseTreeNode<T> node = cache
+            .computeIfAbsent(key, unused -> new ReverseTreeNode<>(value, parent));
         if (parent != null) {
-            node.setIssuedBy(parent, true);
+            node.setParent(parent);
         }
         return node;
     }

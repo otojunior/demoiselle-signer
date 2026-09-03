@@ -27,8 +27,8 @@ public class X509CertificateCache {
         ListIterator<X509Certificate> it = path.listIterator(path.size());
         ReverseTreeNode<X509Certificate> issuer = null;
         while (it.hasPrevious()) {
-            X509Certificate cert = it.previous();
-            issuer = cache.add(uniquekey(cert), cert, issuer);
+            X509Certificate certif = it.previous();
+            issuer = cache.add(uniquekey(certif), certif, issuer);
             issuer.markComplete();
         }
         return issuer;
@@ -57,14 +57,16 @@ public class X509CertificateCache {
             final X509Certificate ca,
             final X509Certificate certificate) {
         ReverseTreeNode<X509Certificate> issuer = cache.get(uniquekey(ca));
-        ReverseTreeNode<X509Certificate> issued = cache.get(uniquekey(certificate));
-        return issuer != null && issued != null
-            ? issued.isIssuedBy(issuer)
+        ReverseTreeNode<X509Certificate> certif = cache.get(uniquekey(certificate));
+        return issuer != null && certif != null
+            ? certif.isIssuedBy(issuer)
             : null;
     }
 
     /**
-     * Registra o resultado da validação entre um certificado e seu possível emissor.
+     * Registra uma relação válida entre um certificado e seu emissor.
+     * Relações inválidas não são armazenadas para evitar crescimento proporcional
+     * ao número de pares de certificados testados.
      * @param ca O possível certificado emissor.
      * @param certificate O certificado emitido.
      * @param value Resultado da validação.
@@ -73,15 +75,17 @@ public class X509CertificateCache {
             final X509Certificate ca,
             final X509Certificate certificate,
             final boolean value) {
-        ReverseTreeNode<X509Certificate> issuer = cache.add(
-            uniquekey(ca),
-            ca,
-            null);
-        ReverseTreeNode<X509Certificate> issued = cache.add(
-            uniquekey(certificate),
-            certificate,
-            null);
-        issued.setIssuedBy(issuer, value);
+        if (value) {
+            String issuerKey = uniquekey(ca);
+            String certifKey = uniquekey(certificate);
+            ReverseTreeNode<X509Certificate> issuer = cache.add(issuerKey, ca, null);
+            
+            if (!issuerKey.equals(certifKey)) {
+                cache.add(certifKey, certificate, issuer);
+            } else {
+                issuer.markComplete();
+            }
+        }
     }
 
     /**
